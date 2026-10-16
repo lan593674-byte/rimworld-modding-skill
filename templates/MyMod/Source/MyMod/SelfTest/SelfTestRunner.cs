@@ -34,7 +34,10 @@ namespace MyMod.SelfTest
         // negative and the game autosaves every tick.
         public const float NoAutosaveDays = 10000f;
         public const float DefaultTimeoutSeconds = 120f;
+        // How long the runner waits for the game to run a tick before a scenario starts.
+        public const float StartGameSeconds = 15f;
         private const float ExitGraceSeconds = 10f;
+        private const int MaxClosedWindowLines = 20;
 
         private sealed class Entry
         {
@@ -50,7 +53,10 @@ namespace MyMod.SelfTest
         private static IEnumerator routine;
         private static readonly Stopwatch scenarioClock = new Stopwatch();
         private static readonly Stopwatch exitClock = new Stopwatch();
-        private static int index, passed, failed, skipped, errorsAtStart, exitCode;
+        private static readonly Stopwatch startClock = new Stopwatch();
+        // Windows the self-test opened itself (ctx.Open); the runner never closes them.
+        private static readonly HashSet<Window> ownWindows = new HashSet<Window>();
+        private static int index, passed, failed, skipped, errorsAtStart, exitCode, startTick, closedLines;
         private static bool started, finished, waitingForReload;
         private static Verse.Game lastGame;
         private static string Tag => CaptureMode ? "[CAPTURE] " : "[SELFTEST] ";
@@ -193,6 +199,8 @@ namespace MyMod.SelfTest
             var entry = scenarios[index];
             if (routine == null)
             {
+                if (!GameRuns(entry))
+                    return;
                 scenarioClock.Restart();
                 errorsAtStart = ModErrors;
                 context.Begin(entry.Name);
@@ -224,6 +232,61 @@ namespace MyMod.SelfTest
                 return ex is SelfTestContext.SkipException skip ? "SKIP " + entry.Name + ": " + skip.Message : "FAIL " + entry.Name + ": " + ex;
             }
         }
+
+        // ---- Getting the game to run ----
+
+        // A paused game is the normal case, not an accident: Prefs.PauseOnLoad, a mod's first-run dialog with
+        // forcePause (Milira Imperium's settings dialog, which Esc does not close), an event window. Before each
+        // scenario the runner closes the force-pausing windows the self-test did not open, sets Normal speed and waits
+        // until TicksGame moves; true once it has. When it does not within StartGameSeconds the scenario fails with
+        // what still pauses the game.
+        private static bool GameRuns(Entry entry)
+        {
+            var ticks = Find.TickManager;
+            if (!startClock.IsRunning)
+            {
+                startClock.Restart();
+                startTick = ticks.TicksGame;
+                closedLines = 0;
+            }
+            // Every frame: a mod may open its dialog a few frames after the map is up.
+            CloseForeignPauses();
+            if (ticks.CurTimeSpeed != TimeSpeed.Normal)
+                ticks.CurTimeSpeed = TimeSpeed.Normal;
+            if (ticks.TicksGame != startTick)
+            {
+                startClock.Reset();
+                return true;
+            }
+            if (startClock.Elapsed.TotalSeconds <= StartGameSeconds)
+                return false;
+            startClock.Reset();
+            End(entry, "FAIL " + entry.Name + ": the game did not run in the " + StartGameSeconds.ToString("0", CultureInfo.InvariantCulture)
+                + " s before the scenario (" + State() + ")");
+            return false;
+        }
+
+        // Closes every open window with forcePause that the self-test did not open (TryRemove works on windows that
+        // Esc does not close) and logs a [DIAG] line for each; returns how many it closed.
+        internal static int CloseForeignPauses()
+        {
+            ownWindows.RemoveWhere(window => !Find.WindowStack.IsOpen(window));
+            var foreign = new List<Window>();
+            foreach (var window in Find.WindowStack.Windows)
+                if (window.forcePause && !ownWindows.Contains(window)) foreign.Add(window);
+            foreach (var window in foreign)
+            {
+                Find.WindowStack.TryRemove(window, false);
+                if (closedLines++ < MaxClosedWindowLines)
+                    ModLog.Message("[DIAG] closed a window that paused the game: " + window.GetType().FullName
+                        + (Find.WindowStack.IsOpen(window) ? " (it is still open)" : string.Empty));
+                else if (closedLines == MaxClosedWindowLines + 1)
+                    ModLog.Message("[DIAG] more paused-game windows were closed; not logging them any more before this scenario");
+            }
+            return foreign.Count;
+        }
+
+        internal static void OwnWindow(Window window) => ownWindows.Add(window);
 
         // Advances the innermost running coroutine one step; false once the scenario has finished.
         private static bool Step()
@@ -275,15 +338,21 @@ namespace MyMod.SelfTest
             catch (Exception ex) { ModLog.Message(Tag + "NOTE clean-up of a coroutine failed: " + ex.Message); }
         }
 
-        // What the game was doing when a scenario timed out.
+        // What the game was doing when a scenario timed out, and what pauses it (TickManager.ForcePaused).
         private static string State()
         {
             var ticks = Find.TickManager;
             var forcing = new List<string>();
             foreach (var window in Find.WindowStack.Windows)
-                if (window.forcePause) forcing.Add(window.GetType().Name);
+                if (window.forcePause) forcing.Add(window.GetType().Name + (ownWindows.Contains(window) ? " (self-test)" : string.Empty));
+            bool tilePicker = false;
+            try { tilePicker = Find.TilePicker != null && Find.TilePicker.Active; }
+            catch { }
             return "tick " + ticks.TicksGame + ", speed " + ticks.CurTimeSpeed + ", forcePaused " + ticks.ForcePaused
                 + (forcing.Count > 0 ? " by " + string.Join(", ", forcing.ToArray()) : string.Empty)
+                + (LongEventHandler.AnyEventNowOrWaiting ? ", a long event is running" : string.Empty)
+                + (tilePicker ? ", the world tile picker is open" : string.Empty)
+                + (Current.Game.PlayerHasControl ? string.Empty : ", the player has no control (screen fade or cutscene: speed changes are ignored)")
                 + ", OnGUI seen " + GuiSeen;
         }
 

@@ -105,6 +105,16 @@ namespace MyMod.SelfTest
                 + ScreenFader.IsFading() + ").");
         }
 
+        // Opens a window as the self-test's own and closes it when the scenario ends. The runner closes force-pausing
+        // windows before each scenario, but never one opened here.
+        public T Open<T>(T window) where T : Window
+        {
+            SelfTestRunner.OwnWindow(window);
+            Find.WindowStack.Add(window);
+            Defer(() => window.Close(false));
+            return window;
+        }
+
         // ---- Saving ----
 
         // Saves the game for real and loads it back; the scenario goes on in the loaded game (fetch components and

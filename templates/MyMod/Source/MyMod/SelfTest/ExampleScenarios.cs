@@ -58,9 +58,7 @@ namespace MyMod.SelfTest
         // Opens the window to photograph; it is closed again when the capture ends.
         public static IEnumerator OpenGreeting(SelfTestContext ctx)
         {
-            var dialog = new Dialog_MessageBox("MyMod_Greeting".Translate());
-            Find.WindowStack.Add(dialog);
-            ctx.Defer(() => dialog.Close(false));
+            ctx.Open(new Dialog_MessageBox("MyMod_Greeting".Translate()));
             yield return ctx.WaitFrames(5);
         }
     }
