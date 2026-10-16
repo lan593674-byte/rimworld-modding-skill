@@ -1,0 +1,4 @@
+# Mods the full profile drops on every game version (one packageId a line, "#" starts a comment): mods that break
+# the game for reasons of their own, so a test with them shows nothing about this mod. Mods incompatible with this
+# mod in particular go into IncompatibleMods in GameTest.psd1 instead.
+RatKin.Extraordinary.Mechanic.clique       # its faction's allowedCultures names a culture NewRatkinPlus no longer has: world generation stops, later factions are missing

@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Test-only helper, built like the mod for each game version (1.6 against Unity, 1.7 against the 1.7 game and
+       Waylith) into bin\<version>\Assemblies; run-savesafety.ps1 copies those folders with About and
+       LoadFolders.xml to the game's Mods\GameTestLoader for the run and removes them afterwards. -->
+  <Import Project="..\..\GameRefs.props" />
+  <PropertyGroup>
+    <TargetFrameworks>net472;net10.0</TargetFrameworks>
+    <LangVersion>9</LangVersion>
+    <AssemblyName>GameTestLoader</AssemblyName>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\$(TargetFramework)\</IntermediateOutputPath>
+    <DebugType>none</DebugType>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net472'">
+    <OutputPath>bin\1.6\Assemblies\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <OutputPath>bin\1.7\Assemblies\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
+    <Compile Remove="*.Waylith.cs" />
+    <PackageReference Include="Krafs.Rimworld.Ref" Version="1.6.4871" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <Compile Remove="*.Unity.cs" />
+    <Reference Include="Assembly-CSharp" HintPath="$(Rw17Refs)\Assembly-CSharp.dll" Private="false" />
+    <Reference Include="UnityStubs" HintPath="$(Rw17Refs)\UnityStubs.dll" Private="false" />
+    <Reference Include="Waylith" HintPath="$(Rw17Refs)\Waylith.dll" Private="false" />
+    <Reference Include="Microsoft.Extensions.Logging.Abstractions" HintPath="$(Rw17Refs)\Microsoft.Extensions.Logging.Abstractions.dll" Private="false" />
+  </ItemGroup>
+</Project>

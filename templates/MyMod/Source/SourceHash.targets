@@ -1,0 +1,73 @@
+<Project>
+  <!-- Source fingerprint, embedded as AssemblyMetadata "<AssemblyName>.SourceHash". The mod logs it at startup
+       ("loaded build=<version folder> source=<hash>") and the test scripts compare it with the dll in the
+       repository, so a dll left over from older sources shows (a failed sync, a game holding the old dll).
+       Both target frameworks hash the same files, so the 1.6 and 1.7 dlls of one build carry the same value.
+       Hashed: every *.cs listed in SourceHashInput (outside obj and bin) and the project file, by path relative to
+       Source (forward slashes, ordinal order); each file's bytes with CR LF turned into LF are hashed with SHA-256,
+       and the lines "<path> <hex>" joined by LF are hashed again. Import this file in the mod's csproj and list
+       the inputs:
+         <ItemGroup><SourceHashInput Include="**\*.cs;..\MyMod.Core\**\*.cs;MyMod.csproj" /></ItemGroup> -->
+  <UsingTask TaskName="ComputeSourceHash" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Root ParameterType="System.String" Required="true" />
+      <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <Hash ParameterType="System.String" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.Security.Cryptography" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        string root = Path.GetFullPath(Root).TrimEnd('\\', '/') + Path.DirectorySeparatorChar;
+        Func<byte[], string> hex = bytes =>
+        {
+            var text = new StringBuilder(bytes.Length * 2);
+            foreach (byte b in bytes)
+                text.Append(b.ToString("x2"));
+            return text.ToString();
+        };
+        var files = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        foreach (ITaskItem file in Files)
+        {
+            string full = Path.GetFullPath(file.GetMetadata("FullPath"));
+            if (!full.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+            {
+                Log.LogError("Source hash input {0} is outside {1}.", full, root);
+                return false;
+            }
+            string relative = full.Substring(root.Length).Replace('\\', '/');
+            if (relative.Split('/').Any(segment => segment == "obj" || segment == "bin"))
+                continue;
+            files[relative] = full;
+        }
+        var lines = new List<string>();
+        using (var sha = SHA256.Create())
+        {
+            foreach (KeyValuePair<string, string> file in files)
+            {
+                byte[] raw = File.ReadAllBytes(file.Value);
+                var content = new MemoryStream(raw.Length);
+                for (int i = 0; i < raw.Length; i++)
+                {
+                    if (raw[i] == (byte)'\r' && i + 1 < raw.Length && raw[i + 1] == (byte)'\n')
+                        continue;
+                    content.WriteByte(raw[i]);
+                }
+                lines.Add(file.Key + " " + hex(sha.ComputeHash(content.ToArray())));
+            }
+            Hash = hex(sha.ComputeHash(Encoding.UTF8.GetBytes(string.Join("\n", lines))));
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+  <!-- An unchanged fingerprint leaves the generated file, and so the compile, alone. -->
+  <Target Name="EmbedSourceHash" BeforeTargets="CoreCompile">
+    <ComputeSourceHash Root="$(MSBuildProjectDirectory)\.." Files="@(SourceHashInput)">
+      <Output TaskParameter="Hash" PropertyName="_SourceHash" />
+    </ComputeSourceHash>
+    <WriteLinesToFile File="$(IntermediateOutputPath)SourceHash.g.cs" Lines="[assembly: global::System.Reflection.AssemblyMetadata(&quot;$(AssemblyName).SourceHash&quot;, &quot;$(_SourceHash)&quot;)]" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Include="$(IntermediateOutputPath)SourceHash.g.cs" />
+      <FileWrites Include="$(IntermediateOutputPath)SourceHash.g.cs" />
+    </ItemGroup>
+  </Target>
+</Project>

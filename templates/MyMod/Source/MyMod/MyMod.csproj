@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- One dll per game version, each loaded from its own folder (LoadFolders.xml): net472 is the 1.6 build against
+       Unity (NuGet Krafs.Rimworld.Ref), net10.0 the 1.7 build against the 1.7 game itself (Waylith on .NET 10,
+       Source\GameRefs.props). What the mod asks the engine directly lives in Engine\Engine.Unity.cs and
+       Engine\Engine.Waylith.cs; each build compiles one of them. -->
+  <Import Project="..\GameRefs.props" />
+  <Import Project="..\SourceHash.targets" />
+  <PropertyGroup>
+    <TargetFrameworks>net472;net10.0</TargetFrameworks>
+    <LangVersion>9</LangVersion>
+    <AssemblyName>MyMod</AssemblyName>
+    <RootNamespace>MyMod</RootNamespace>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- Both targets build in parallel: separate intermediate folders, or they fight over obj\Release\MyMod.dll. -->
+    <IntermediateOutputPath>obj\$(Configuration)\$(TargetFramework)\</IntermediateOutputPath>
+    <DebugType>none</DebugType>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- The game loads every file in Assemblies; the 1.7 build would add MyMod.deps.json. -->
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <UsesHarmony>true</UsesHarmony>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net472'">
+    <OutputPath>..\..\1.6\Assemblies\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <OutputPath>..\..\1.7\Assemblies\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Everything that changes the dll: a change to any of these changes the source fingerprint. -->
+    <SourceHashInput Include="**\*.cs;MyMod.csproj;..\GameRefs.props" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
+    <Compile Remove="**\*.Waylith.cs" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="Krafs.Rimworld.Ref" Version="1.6.4871" ExcludeAssets="runtime" PrivateAssets="all" />
+    <!-- ExcludeAssets="runtime": the Harmony mod supplies 0Harmony.dll; a copy in Assemblies would load twice. -->
+    <PackageReference Include="Lib.Harmony" Version="2.3.6" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <Compile Remove="**\*.Unity.cs" />
+    <Reference Include="Assembly-CSharp" HintPath="$(Rw17Refs)\Assembly-CSharp.dll" Private="false" />
+    <Reference Include="UnityStubs" HintPath="$(Rw17Refs)\UnityStubs.dll" Private="false" />
+    <Reference Include="Waylith" HintPath="$(Rw17Refs)\Waylith.dll" Private="false" />
+    <Reference Include="Microsoft.Extensions.Logging.Abstractions" HintPath="$(Rw17Refs)\Microsoft.Extensions.Logging.Abstractions.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(Harmony17Refs)\0Harmony.dll" Private="false" />
+  </ItemGroup>
+  <!-- Once both are built (the outer build of the two targets): the game loads, and the Workshop uploads, a copy
+       without development files. While a game has the mod loaded its dll is locked: build with -p:SkipSync=true. -->
+  <Target Name="SyncToGame" AfterTargets="Build" Condition="'$(SkipSync)' != 'true' And '$(TargetFramework)' == ''">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\tools\sync-to-steam.ps1&quot;" />
+  </Target>
+</Project>

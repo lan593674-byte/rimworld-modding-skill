@@ -1,0 +1,29 @@
+<Project>
+  <!-- Where the builds find the game.
+       1.6 (net472) compiles against the NuGet package Krafs.Rimworld.Ref and does not need the game at all.
+       1.7 (net10.0) compiles against assemblies copied out of the installed 1.7 game by Source\tools\save-game-refs.ps1
+       into <dev root>\GameRefs (shared by all mods), so it builds whichever branch Steam has installed. After a game
+       update: run that script with 1.7 installed and set Rw17Version to the folder it wrote.
+       RimWorldDir: only for the warning below; the sync script finds the game itself (GameTest.psd1). -->
+  <PropertyGroup>
+    <GameRefsDir Condition="'$(GameRefsDir)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\GameRefs'))</GameRefsDir>
+    <Rw17Version>1.7.4979-rev109</Rw17Version>
+    <Rw17Refs>$(GameRefsDir)\$(Rw17Version)</Rw17Refs>
+    <Harmony17Refs>$(GameRefsDir)\Harmony-1.7</Harmony17Refs>
+    <RimWorldDir Condition="'$(RimWorldDir)' == ''">$(RIMWORLD_GAME_ROOT)</RimWorldDir>
+  </PropertyGroup>
+  <Target Name="CheckRw17Refs" BeforeTargets="ResolveAssemblyReferences" Condition="'$(TargetFramework)' == 'net10.0'">
+    <Error Condition="!Exists('$(Rw17Refs)\Assembly-CSharp.dll')"
+           Text="The 1.7 reference assemblies are missing ($(Rw17Refs)): install the 1.7 beta and run Source\tools\save-game-refs.ps1." />
+    <Error Condition="'$(UsesHarmony)' == 'true' And !Exists('$(Harmony17Refs)\0Harmony.dll')"
+           Text="Harmony's 1.7 0Harmony.dll is missing ($(Harmony17Refs)): subscribe to Harmony and run Source\tools\save-game-refs.ps1." />
+    <ReadLinesFromFile File="$(RimWorldDir)\Version.txt" Condition="'$(RimWorldDir)' != '' And Exists('$(RimWorldDir)\RimWorld.exe')">
+      <Output TaskParameter="Lines" PropertyName="_InstalledRw17" />
+    </ReadLinesFromFile>
+    <PropertyGroup>
+      <_InstalledRw17>$(_InstalledRw17.Trim().Replace(' ', '-'))</_InstalledRw17>
+    </PropertyGroup>
+    <Warning Condition="'$(_InstalledRw17)' != '' And '$(_InstalledRw17)' != '$(Rw17Version)'"
+             Text="The installed game is $(_InstalledRw17) but the 1.7 build compiles against $(Rw17Version): run Source\tools\save-game-refs.ps1 and set Rw17Version in Source\GameRefs.props." />
+  </Target>
+</Project>

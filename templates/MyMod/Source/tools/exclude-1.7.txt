@@ -1,0 +1,27 @@
+# Mods the full profile drops on 1.7 (one packageId a line, "#" starts a comment). The 1.7 engine is well
+# optimized and the optimization mods were not made for it: tests on 1.7 never carry them, whether or not they
+# claim 1.7 support. On 1.6 they stay in. Add new ones by name and description (performance, optimizer, TPS,
+# GC, tick rate, faster loading); ask the user when unsure.
+zetrith.prepatcher                         # Prepatcher: engine crash in the main menu
+vortex.kingfisher                          # Kingfisher: BadImageFormatException as soon as a building spawns
+taranchuk.performanceoptimizer             # Performance Optimizer
+optimizer.zh
+dubwise.dubsperformanceanalyzer.steam      # Dubs Performance Analyzer
+cc.chinese.rimworld.dubsperformanceanalyzer
+vr.missilegirl                             # Missile Girl
+ilyvion.loadingprogress                    # Loading Progress
+ilyvion.loadingprogress.zh
+vortex.purepatcher                         # PurePatcher
+sarg.smartspeed                            # Smart Speed
+soulwolf.ch.smartspeed
+blue.adaptivetps                           # Adaptive TPS
+blue.adaptivetps.zh
+gwinnbleidd.mothballedanddeadpawns         # Better GC (Mothballed and World Pawns)
+gwinnbleidd.mothballedanddeadpawns.zh
+arkymn.slowerpawntickrate                  # Slower Pawn Tick Rate (declares 1.7, still dropped)
+arkymn.slowerpawntickrate.zh
+arkymn.performanceesmolas                  # Performance Esmolas (declares 1.7, still dropped)
+# Not optimization mods, but they break every window on 1.7 (an exception in WindowStack.WindowStackOnGUI each
+# frame: their InputUtility needs UnityEngine.UIElements.MouseButton, which UnityStubs lacks).
+nebulae.rimworld                           # NebulaeFlood's Lib
+nebulae.simplymoreroofs                    # Simply More Roofs (needs NebulaeFlood's Lib)
