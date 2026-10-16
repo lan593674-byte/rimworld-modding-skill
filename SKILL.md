@@ -247,6 +247,7 @@ description: 环世界（RimWorld）模组开发规则。凡是涉及环世界�
 - 自测框架的协程如果 `yield return` 另一个 IEnumerator，框架要自己展开（用栈逐层 MoveNext），否则子协程根本不执行、测试假通过。
 - 1.6 的最小化窗口偶尔报告屏幕接近 0（`UI.screenWidth/Height` 小于 100），这时打开的窗口按屏幕算出的大小会退回默认值。窗口恢复后 `WindowStack.AdjustWindowsIfResolutionChanged` 会调 `Notify_ResolutionChanged`，窗口重新排版，游戏里没问题；但自测要是在同一帧拿屏幕检查「窗口在屏幕内」，就会误报。屏幕尺寸无效时只检查退回的默认值。
 - 地图载入后 `Root_Play` 有半秒从黑屏淡入（`ScreenFader.StartFade(Color.clear, 0.5f)`，按真实时间）。截图前先等 `ScreenFader.IsFading()` 变成 false（1.6、1.7 都是公开方法），否则第一张会是暗的。淡入期间 `Game.PlayerHasControl` 是 false，设 `TickManager.CurTimeSpeed` 会被悄悄忽略（1.6、1.7 都是），读档后马上调速的自测场景会一直按正常速度跑到超时。自测框架开始每个场景前、读档后都先等淡入结束，调速后检查是否真的改了。
+- 测试要推进游戏时间时（例如存档安全的辅助模组读档后跑几百 tick），直接调 `Find.TickManager.DoSingleTick()`，每帧一批，不要设好速度等时钟自己走：淡入期间调速会被忽略（见上一条），模组弹出的强制暂停对话框会让时钟一直不走（见下一节「游戏一开始就处于暂停」那条）。实测：完整列表下靠调速推进的辅助模组卡满 900 秒超时，改成自己推进后通过（模板的 `TestLoader.cs` 就是这样做的）。
 - 刚收到的信件要滑入右侧信件栏，约需 180 帧；截图前不等的话，信件标签会叠在一起。
 - 开发者模式下任何模组一报错，调试日志窗口（`LudeonTK.EditWindow_Log`）就会自动弹出；完整模组列表启动时总有报错，截图会被它挡住。截图前先 `Find.WindowStack.TryRemove(typeof(LudeonTK.EditWindow_Log), false)`。
 - 1.6 上，测试配置 `Config\Prefs.xml` 里的 `screenWidth/screenHeight` 优先于命令行 `-screen-width/-screen-height`，要换截图分辨率得改 Prefs.xml（1.7 没有 `-screen-width`，窗口大小也看 Prefs.xml，见 `references\rimworld-1.7.md`）。
@@ -264,6 +265,8 @@ description: 环世界（RimWorld）模组开发规则。凡是涉及环世界�
 - 完整列表的英文截图里，底部主菜单栏（连本模组的按钮）显示成中文，不一定是模组的翻译问题：UI Not Included（2588873455）把每个按钮的文字存进自己的设置（测试配置 `Config\Mod_2588873455_UINI_Mod.xml` 里的 `ButtonConfig.label`），设置是中文运行时写的，换语言后照旧显示存下的文字。核对按钮的英文名看原版配置的截图。
 - 用户说新开的地图没有小人、界面大量报错时，先只读地看用户的 `Player.log`，查是不是 Steam 正在更新创意工坊模组：新文件已经下到 `<Steam 库>\steamapps\workshop\downloads\294100\<id>` 还没装上，旧文件已经删了一部分。见过的一例：某个种族模组的定义文件先被删掉，种族没了，它的 PawnKindDef 的 race 为空，原版 `ScenPart_StartingAnimal.PossibleAnimals` 里 `td.RaceProps` 报 NRE，整个开局生成中断，所以没有殖民者；研究窗口 `LabelSuffixForUnlocked` 同样因此报错。判断方法：`<Steam 库>\steamapps\workshop\appworkshop_294100.acf` 里已装的 manifest 和最新的不同、downloads 里有这个 id。处理：关掉游戏让 Steam 装完更新（或在 Steam 里验证、重新订阅那个模组）。
 - 开新档缺阵营（例如自测报 "Core mechanoid kind or faction is missing"）：先查日志里的 `Error in WorldGenStep`。某个阵营的 `allowedCultures` 引用了不存在的文化时，`IdeoFoundation.RandomizePlace` 因 `ideo.culture` 为空抛 NRE，`WorldGenStep_Factions` 中断，排在后面的阵营全都不生成。见过的一例：RatKin Extraordinary clique（`RatKin.Extraordinary.Mechanic.clique`）引用了 NewRatkinPlus 里已经没有的 `RatkiniaTraditionCulture`，1.6、1.7 都会这样，测试时排除它。
+- **游戏一开始就处于暂停要当成常态来设计。** 很多模组和游戏情况都会让游戏暂停：模组弹出的强制暂停对话框（见下一条）、原版选项「读档后暂停」（`Prefs.PauseOnLoad`）、信件和教程、长事件、选地块、引力船过场。原版 `TickManager.Paused` 已经把这些都算进去：`curTimeSpeed == Paused`，或 `ForcePaused`（`WindowStack.WindowsForcePause`、`LongEventHandler.ForcePause`、`TilePicker.Active`、引力船过场，`Verse\TickManager.cs`）。做法：模组里按时间判断的逻辑（超时、冷却、看门狗）只累计 `!Find.TickManager.Paused` 的时间，不用墙钟；自测运行器在第一个场景前和每个场景前主动让游戏走起来：关掉不是自测自己开的 `forcePause` 窗口（`Find.WindowStack.TryRemove(w, false)`，Esc 关不掉的也能关，每关一个记一行 `[DIAG]`），把速度设成正常，并等到 `TicksGame` 真的变了；等不到就判失败，写明还被什么暂停着。
+- 全新的 full 测试配置上第一次跑自测，依赖游戏时间的场景全部失败（「1 秒走了 0 tick」「The game is paused」，速度设置却是正常）：Milira Imperium（`ariandel.miliraimperium`，3588393755）第一次进档时弹「模组设置引导」对话框（AriandelLibrary 的 `Dialog`，`forcePause` 默认 true，不能用 Esc 关），弹完把设置写成不再弹，所以第二次起就正常。办法：照上一条在自测开始时关掉强制暂停的窗口，或者先跑一次让它弹过，或者排除它。用二分找这类元凶时，要么每次都从全新配置开始，要么都不是，混着比会被「第一次运行」的差别误导。
 
 ### 构建和工具
 
