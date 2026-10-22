@@ -49,10 +49,12 @@ function Find-RimWorldRoot {
 
 $script:Cfg = Read-GameTestConfig (Join-Path $PSScriptRoot 'GameTest.psd1')
 $script:RepoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
-$script:DevRoot = Split-Path -Parent $script:RepoRoot
-$script:TestRoot = Join-Path $script:DevRoot ($script:Cfg.ModName + 'Test')
-$script:ModListsDir = Join-Path $script:DevRoot 'ModLists'
-$script:LogBackupDir = Join-Path $script:DevRoot 'player-log-backup'
+$script:ModRoot = Split-Path -Parent $script:RepoRoot
+$script:DevRoot = Split-Path -Parent $script:ModRoot
+$script:SharedRoot = Join-Path $script:DevRoot '_shared'
+$script:TestRoot = Join-Path $script:ModRoot 'test'
+$script:ModListsDir = Join-Path $script:SharedRoot 'ModLists'
+$script:LogBackupDir = Join-Path $script:SharedRoot 'player-log-backup'
 $script:GameRoot = if ($script:Cfg.GameRoot) { $script:Cfg.GameRoot } else { Find-RimWorldRoot }
 $script:GameRoot = [IO.Path]::GetFullPath($script:GameRoot)
 $script:WorkshopRoot = [IO.Path]::GetFullPath((Join-Path $script:GameRoot '..\..\workshop\content\294100'))
@@ -484,7 +486,7 @@ function Update-FullModList([xml]$Mods, [string[]]$ExcludeMods) {
     Set-ActiveIds $Mods $ids
 }
 
-# The mod list the full profile copies: $ModList (a path, or a file name in <dev root>\ModLists), else the
+# The mod list the full profile copies: $ModList (a path, or a file name in <dev root>\_shared\ModLists), else the
 # player's own. A player's list of 10 mods or more is also saved to ModLists\user-<date>.xml once a day.
 function Get-FullModListSource([string]$ModList) {
     if ($ModList) {

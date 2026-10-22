@@ -1,14 +1,15 @@
 # Settings of this mod's test scripts. Every script in this folder reads this file through GameRuntime.ps1;
 # nothing else in Source\tools names the mod, so the scripts can be copied unchanged to another mod.
 # Paths that are not set here follow the folder convention of the skill:
-#   <dev root>\<ModName>          this repository (the dev root is the repository's parent folder)
-#   <dev root>\<ModName>Test      test profiles, logs, screenshots
-#   <dev root>\ModLists           saved mod lists for the full profile, shared by all mods
-#   <dev root>\GameRefs           1.7 reference assemblies, shared by all mods (save-game-refs.ps1)
-#   <dev root>\player-log-backup  the player's 1.7 Player.log while a test runs, shared by all mods
+#   <dev root>\<ModName>\repo              this repository (the dev root is two folders up from it)
+#   <dev root>\<ModName>\dev               working notes, not in the repository
+#   <dev root>\<ModName>\test              test profiles, logs, screenshots
+#   <dev root>\_shared\ModLists           saved mod lists for the full profile, shared by all mods
+#   <dev root>\_shared\GameRefs           1.7 reference assemblies, shared by all mods (save-game-refs.ps1)
+#   <dev root>\_shared\player-log-backup  the player's 1.7 Player.log while a test runs, shared by all mods
 # Keep this file ASCII, or save it as UTF-8: GameRuntime.ps1 reads it as UTF-8 either way.
 @{
-    # Folder name in the game's Mods folder, dll name (<ModName>.dll), test folder (<ModName>Test).
+    # Folder name in the game's Mods folder, dll name (<ModName>.dll), test folder (<dev root>\<ModName>\test).
     ModName       = 'MyMod'
     PackageId     = 'yourname.mymod'
     # Every log line of the mod starts with this (ModLog.cs uses the same text).

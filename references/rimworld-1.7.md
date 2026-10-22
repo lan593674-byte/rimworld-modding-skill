@@ -11,7 +11,7 @@
 - 反编译：游戏本身是 `<游戏目录>\Assembly-CSharp.dll`，引擎是游戏根目录的 `RimWorld.dll`、`Waylith.dll`、`UnityStubs.dll`、`Waylith.UnityCompat.dll`，全部约 30 秒。在 Git Bash 里这样跑：
 
   ```bash
-  G=<游戏目录，用正斜杠>; O=<开发目录，用正斜杠>/RimWorld-decompiled-1.7
+  G=<游戏目录，用正斜杠>; O=<开发目录，用正斜杠>/_shared/decompiled/1.7
   ilspycmd -p -o "$O" "$G/Assembly-CSharp.dll"
   for n in RimWorld Waylith UnityStubs Waylith.UnityCompat; do ilspycmd -p -o "$O/_engine/$n" "$G/$n.dll"; done
   ```
@@ -75,7 +75,7 @@
 ## 两份构建的做法
 
 - 还要支持 1.6 时：`1.6` 文件夹放针对 Krafs.Rimworld.Ref 1.6 编译的 dll；`1.7` 文件夹放针对 1.7 的游戏程序集编译、直接调用 Waylith 原生接口的 dll（SKILL.md 第一节的版本文件夹约定）。两份由同一套源码构建，引擎相关的代码放进适配层，按目标框架选 1.6（Unity）或 1.7（Waylith）的实现。不要用「两个版本放同一份 1.6 构建、运行时判断引擎、再反射调用 Waylith」的办法：那样 1.7 版仍然是拿 Unity 开发的。
-- 1.7 的参考程序集放 `<开发目录>\GameRefs`，所有模组共用。`<版本>\` 放游戏根目录的 `Assembly-CSharp`、`UnityStubs`、`Waylith`、`Waylith.UnityCompat`、`RimWorld`、`Microsoft.Extensions.Logging.Abstractions` 和 `Version.txt`；版本取自 `Version.txt`，空格换成短横线，如 `1.7.4977-rev1248`。`Harmony-1.7\` 放 Harmony 模组 1.7 文件夹里的 `0Harmony.dll`（创意工坊版在 `<Steam 库>\steamapps\workshop\content\294100\2009463077\1.7\Assemblies\0Harmony.dll`）。写个脚本（如 `Source\tools\save-game-refs.ps1`）在装着 1.7 时复制这些文件，之后本机切回 1.6，1.7 版照样能编。游戏更新后重跑这个脚本（新版本进新文件夹），再改构建里的版本号（放在共用的 props 文件里，如 `Source\GameRefs.props` 的 `Rw17Version`）。装的 1.7 和这个版本号不一致时，构建报警告。
+- 1.7 的参考程序集放 `<开发目录>\_shared\GameRefs`，所有模组共用。`<版本>\` 放游戏根目录的 `Assembly-CSharp`、`UnityStubs`、`Waylith`、`Waylith.UnityCompat`、`RimWorld`、`Microsoft.Extensions.Logging.Abstractions` 和 `Version.txt`；版本取自 `Version.txt`，空格换成短横线，如 `1.7.4977-rev1248`。`Harmony-1.7\` 放 Harmony 模组 1.7 文件夹里的 `0Harmony.dll`（创意工坊版在 `<Steam 库>\steamapps\workshop\content\294100\2009463077\1.7\Assemblies\0Harmony.dll`）。写个脚本（如 `Source\tools\save-game-refs.ps1`）在装着 1.7 时复制这些文件，之后本机切回 1.6，1.7 版照样能编。游戏更新后重跑这个脚本（新版本进新文件夹），再改构建里的版本号（放在共用的 props 文件里，如 `Source\GameRefs.props` 的 `Rw17Version`）。装的 1.7 和这个版本号不一致时，构建报警告。
 - 一个 csproj 写 `<TargetFrameworks>net472;net10.0</TargetFrameworks>`，再写 `<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>`（输出目录自己指定），按 `$(TargetFramework)` 分两套：net472 引用 Krafs.Rimworld.Ref 1.6 和 Lib.Harmony 2.x（两个包都加 `ExcludeAssets="runtime"`，不然 `0Harmony.dll` 会被复制进 `1.6\Assemblies`，跟着模组发布出去），输出到 `..\..\1.6\Assemblies\`；net10.0 用 HintPath 引用 GameRefs 里的 `Assembly-CSharp`、`UnityStubs`、`Waylith` 和 `Harmony-1.7\0Harmony.dll`，用到 `LogStream` 时再加 `Microsoft.Extensions.Logging.Abstractions`（都加 `Private="false"`），输出到 `..\..\1.7\Assemblies\`。一次 `dotnet build` 两份都出来。
   - net10.0 还要加 `<GenerateDependencyFile>false</GenerateDependencyFile>`，不然 Assemblies 里会多一个 `.deps.json`。
   - 关了 `AppendTargetFrameworkToOutputPath` 时，两个目标的中间目录也不再分开，都是 `obj\Release`，并行编译时抢同一个 `obj\Release\<模组>.dll`（报文件被占用、`refint\<模组>.dll` 不存在）；每个目标的 PropertyGroup 里再写 `<IntermediateOutputPath>obj\$(Configuration)\net472\</IntermediateOutputPath>`（net10.0 同理），改完删掉旧的 `obj\Release`。
@@ -94,7 +94,7 @@
 - 日志：`-logfile` 没了，日志固定写 `<用户数据目录>\Logs\Player.log`，启动时把旧的改名为 `Player-prev.log`；文件头有 `Process:   pid N` 和 `Command:` 行，每行前缀 `yyyy-MM-dd HH:mm:ss.fff LEVEL [分类] `，错误级别是 ERROR。测试脚本只认文件头写着自己进程号的日志，去掉前缀后给 ERROR 行加 `[LOGERROR] ` 标记再判定；启动前备份、结束后还原用户自己的两份日志。
   - 备份时在备份文件夹里写一个 `pending` 标记，还原后删掉；标记在，就说明还有备份没还原。
   - 备份和还原只由测试锁最外层的持有者做（锁可重入，见下一条）：一个脚本在备份期间调用另一个脚本的准备步骤（`-PrepareOnly`）时，子脚本要是在 finally 里照样还原，会提前用掉备份、删掉标记，父脚本之后启动的游戏覆盖了用户的日志，最后的还原又被跳过，用户原来的两份日志就丢了。
-  - 备份文件夹所有模组共用一个（例如 `<开发目录>\player-log-backup`），不要每个模组各放一个：哪个模组的脚本中途被杀掉，下一个拿到锁的脚本（不管是哪个模组的）都能先把上次的备份还原回去。
+  - 备份文件夹所有模组共用一个（例如 `<开发目录>\_shared\player-log-backup`），不要每个模组各放一个：哪个模组的脚本中途被杀掉，下一个拿到锁的脚本（不管是哪个模组的）都能先把上次的备份还原回去。
   - 备份时不要用测试日志覆盖备份里用户自己的日志（文件头 Command 行带 `-savedatafolder=<开发目录>` 的是测试日志），这样某次没还原成功，下一次运行还能放回去。
   - 这些放进一个各脚本共用的 `Source\tools\GameRuntime.ps1`；几个模组各有一份时，内容保持一致，改了要同步。
 - 同一时间只能跑一个游戏（大家写同一个日志）：测试脚本都拿跨模组互斥量 `Local\RimWorld.GameTest`（拿不到就等，等待上限要明显长于单次测试的超时，比如 full 给 3600 秒时等 90 分钟）。锁要能重入：父脚本拿着锁、在同一进程里调用子脚本的准备步骤（`-PrepareOnly`）时，子脚本照常拿锁，同一线程上重入成功，不会死等（.NET 的 `Mutex` 本身可重入；另开 `powershell -File` 就成了另一个进程，会死等）。同步发布文件、写测试配置也要在拿到锁之后：别的会话正在跑的游戏用着 Mods 里的模组和同一套测试配置。dll 被游戏锁住时，robocopy /MIR 按默认设置重试（一百万次、每次等 30 秒），等于卡死；1.7 运行中窗口位置一变就 `Prefs.Save()` 重写整个 `Prefs.xml`（`WindowPlacement.Track`，每 30 帧查一次），可能把别人刚写进去的语言等设置改回去。所以 robocopy 要加 `/R:2 /W:2`，会调用 `-PrepareOnly` 的脚本要先拿锁再调它。不能靠多开提速：1.7 的日志目录固定取 `SHGetKnownFolderPath(LocalAppDataLow)`（`_engine\RimWorld\RimWorldWaylith\Bootstrap.cs` 的 `ResolvePersistentDataRoot`），`-savedatafolder` 只影响存档和缓存；第二个实例会用 `FileMode.Create` 截断同一个 `Player.log` 并交错写入（`Waylith.Logging.FileLog.StartLocked`）。
@@ -122,7 +122,7 @@
 
 - 测试版会随时更新（看 `Version.txt` 和 `Assembly-CSharp.dll` 的修改时间）。版本号不变也可能换了构建：4977 的 rev926 和 rev1248，`Version.txt` 都写 1.7.4977，`Assembly-CSharp.dll` 的程序集版本却从 1.7.9782.27799 变成了 1.7.9782.37458，引擎 dll 的 ProductVersion 也变了；所以要比程序集版本，不能只看 `Version.txt`。
 - 更新后：
-  1. 旧的反编译改名留着（如 `RimWorld-decompiled-1.7.4977-rev1248`），重新反编译到 `<开发目录>\RimWorld-decompiled-1.7`；新旧两份用 `diff -rq` 比一下就知道改了什么。
+  1. 旧的反编译挪进 `<开发目录>\_shared\decompiled\old\<版本>` 留着（如 `old\1.7.4977-rev1248`），重新反编译到 `<开发目录>\_shared\decompiled\1.7`；新旧两份用 `diff -rq` 比一下就知道改了什么。
   2. GameRefs 存一份新版本，改构建里的版本号，重新编译。
   3. 用二进制检查（refcheck17）重查模组 dll。
   4. 测试配置的 `ModsConfig.xml` 版本号由脚本按 `Version.txt` 自动写。

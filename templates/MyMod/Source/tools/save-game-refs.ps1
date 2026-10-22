@@ -1,4 +1,4 @@
-# Copies the assemblies a 1.7 (Waylith) build compiles against out of the installed game into <dev root>\GameRefs,
+# Copies the assemblies a 1.7 (Waylith) build compiles against out of the installed game into <dev root>\_shared\GameRefs,
 # so the 1.7 build keeps working while Steam has 1.6 installed. Run it with 1.7 installed after each game update,
 # then set Rw17Version in Source\GameRefs.props to the folder it names. Shared by all mods; a version folder is
 # never changed once written.
@@ -10,7 +10,7 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'GameRuntime.ps1')
-$refsRoot = Join-Path $DevRoot 'GameRefs'
+$refsRoot = Join-Path $SharedRoot 'GameRefs'
 
 if (-not (Test-WaylithGame)) { throw "The game in $GameRoot is not 1.7 (no RimWorld.exe): switch Steam to the 1.7 beta first." }
 $version = (Get-GameVersion) -replace '\s+', '-'

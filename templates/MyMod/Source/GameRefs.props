@@ -2,11 +2,11 @@
   <!-- Where the builds find the game.
        1.6 (net472) compiles against the NuGet package Krafs.Rimworld.Ref and does not need the game at all.
        1.7 (net10.0) compiles against assemblies copied out of the installed 1.7 game by Source\tools\save-game-refs.ps1
-       into <dev root>\GameRefs (shared by all mods), so it builds whichever branch Steam has installed. After a game
+       into <dev root>\_shared\GameRefs (shared by all mods), so it builds whichever branch Steam has installed. After a game
        update: run that script with 1.7 installed and set Rw17Version to the folder it wrote.
        RimWorldDir: only for the warning below; the sync script finds the game itself (GameTest.psd1). -->
   <PropertyGroup>
-    <GameRefsDir Condition="'$(GameRefsDir)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\GameRefs'))</GameRefsDir>
+    <GameRefsDir Condition="'$(GameRefsDir)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\..\_shared\GameRefs'))</GameRefsDir>
     <Rw17Version>1.7.4979-rev109</Rw17Version>
     <Rw17Refs>$(GameRefsDir)\$(Rw17Version)</Rw17Refs>
     <Harmony17Refs>$(GameRefsDir)\Harmony-1.7</Harmony17Refs>

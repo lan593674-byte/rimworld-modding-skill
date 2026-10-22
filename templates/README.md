@@ -4,7 +4,7 @@
 
 ## 用法
 
-1. 把 `MyMod` 复制到 `<开发目录>\<模组名>`。测试脚本把仓库的上一级目录当作开发目录，`<模组名>Test`、`ModLists`、`GameRefs`、`player-log-backup` 都放在那里。
+1. 把 `MyMod` 复制到 `<开发目录>\<模组名>\repo`。测试脚本把仓库的上一级当作模组主文件夹，测试数据放它下面的 `test`；再上一级是开发目录，`ModLists`、`GameRefs`、`player-log-backup` 放在开发目录的 `_shared` 里，所有模组共用。
 2. 改名：文件夹 `Source\MyMod`、`Source\MyMod.Tests`，文件 `MyMod.csproj`、`MyModMod.cs`、`MyModGameComponent.cs`、`MyMod.Tests.csproj`、`Languages\*\Keyed\MyMod.xml`，以及所有文件里的 `MyMod`、`mymod`、`yourname`（命名空间、程序集名、语言键前缀、packageId、Harmony ID）。`GameTestLoader` 和 `gametest.testloader` 不改，所有模组共用。
 3. 改 `Source\tools\GameTest.psd1`：模组名、packageId、日志前缀、命令行前缀、Def 前缀、依赖、发布目录。日志前缀要和 `ModLog.Prefix` 一样，命令行前缀要和 `SelfTestSetup.ArgPrefix` 一样，单元测试 `TestSettingsMatchTheCode` 会检查。
 4. 改 `About\About.xml`。不用 Harmony 的模组：删掉 `About.xml` 里的依赖、`GameTest.psd1` 的 `Dependencies` 里的 Harmony、csproj 里两处 Harmony 引用和 `UsesHarmony`、`MyModMod.cs` 里的 `PatchAll`、`SelfTestSetup.DiagnosticTargets` 里的 `AccessTools`（改成反射找方法）。
@@ -33,7 +33,7 @@
 | `Source\tools\GameRuntime.ps1` | 各脚本共用：读配置、找游戏（注册表加 `libraryfolders.vdf`）、测试锁（可重入，清理被杀掉的上次运行留下的游戏）、1.7 日志的备份和还原、日志判定（带超时）、启动和等待游戏、测试配置（vanilla、core、full） |
 | `Source\tools\sync-to-steam.ps1` | 同步发布文件。检查每个版本文件夹只有本次构建的 dll、两份 dll 的源码指纹相同；robocopy 只重试两次；保留模组运行时写的数据目录 |
 | `Source\tools\run-selftest.ps1`、`run-capture.ps1`、`run-savesafety.ps1` | 游戏内自测、截图、存档安全 |
-| `Source\tools\save-game-refs.ps1` | 把 1.7 的游戏程序集复制到 `<开发目录>\GameRefs` |
+| `Source\tools\save-game-refs.ps1` | 把 1.7 的游戏程序集复制到 `<开发目录>\_shared\GameRefs` |
 | `Source\tools\exclude-1.7.txt`、`exclude-full.txt` | full 配置要去掉的模组：1.7 上的优化类模组，以及会把游戏搞坏的模组 |
 | `Source\tools\TestLoaderMod\` | 存档安全用的测试辅助模组（不发布）：读档、跑几百 tick、另存，按阶段汇总错误；两个游戏版本各编一份 |
 | `Source\GameRefs.props`、`Source\SourceHash.targets` | 1.7 引用程序集的位置；源码指纹（嵌进 dll，启动日志打印，脚本据此确认游戏加载的是这次的构建） |
