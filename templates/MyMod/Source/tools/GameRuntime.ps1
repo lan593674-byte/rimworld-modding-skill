@@ -520,7 +520,10 @@ function New-TestProfile {
         [ValidateSet('First', 'Middle', 'Last')][string]$LoadPosition = 'Last',
         [ValidateSet('ChineseSimplified', 'English')][string]$Language = 'English',
         [int]$ScreenWidth = 1280,
-        [int]$ScreenHeight = 720
+        [int]$ScreenHeight = 720,
+        # The game's UI scale option (1.7 also caps it by the window size, ResolutionUtility.ResolveUIScale).
+        [string]$UIScale = '1',
+        [switch]$DisableTinyText
     )
     if (-not $Name) { $Name = $Profile }
     $profileRoot = Join-Path $script:TestRoot $Name
@@ -569,6 +572,7 @@ function New-TestProfile {
         devMode = 'true'; runInBackground = 'true'; pauseOnError = 'false'; pauseOnLoad = 'false'
         langFolderName = $(if ($Language -eq 'English') { 'English' } else { $chinese })
         fullscreen = 'false'; screenWidth = "$ScreenWidth"; screenHeight = "$ScreenHeight"
+        uiScale = $UIScale; disableTinyText = $(if ($DisableTinyText) { 'true' } else { 'false' })
         # The learning helper covers the top right of windows in screenshots.
         adaptiveTrainingEnabled = 'false'
     }

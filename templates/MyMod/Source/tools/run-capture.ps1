@@ -17,6 +17,9 @@ param(
     # The window size comes from the profile's Prefs.xml on both branches.
     [int]$Width = 1280,
     [int]$Height = 720,
+    # The game's UI scale option and its "disable tiny text" option, written to the profile's Prefs.xml.
+    [string]$UIScale = '1',
+    [switch]$DisableTinyText,
     # Copy the pictures and the log here before the lock is released: the next capture clears the shots folder.
     [string]$SaveTo = ''
 )
@@ -37,7 +40,7 @@ try {
     # Lock first: preparing syncs the release files and rewrites the shared profile.
     $mutex = Enter-GameTestLock
     & (Join-Path $PSScriptRoot 'run-selftest.ps1') -PrepareOnly -Profile $Profile -Language $Language -ModList $ModList `
-        -ExcludeMods $ExcludeMods -ScreenWidth $Width -ScreenHeight $Height
+        -ExcludeMods $ExcludeMods -ScreenWidth $Width -ScreenHeight $Height -UIScale $UIScale -DisableTinyText:$DisableTinyText
     if ($LASTEXITCODE -ne 0) { throw 'Preparing the test profile failed.' }
     $profileRoot = Join-Path $TestRoot $Profile
     $logPath = Join-Path $profileRoot 'capture.log'

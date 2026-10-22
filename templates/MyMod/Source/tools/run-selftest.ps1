@@ -31,6 +31,9 @@ param(
     [string]$Language = 'English',
     [int]$ScreenWidth = 1280,
     [int]$ScreenHeight = 720,
+    # The game's UI scale option and its "disable tiny text" option, written to the profile's Prefs.xml.
+    [string]$UIScale = '1',
+    [switch]$DisableTinyText,
     # Sync and write the test profile only, no game: for other scripts, which call it in-process (& ...) while
     # they hold the test lock.
     [switch]$PrepareOnly,
@@ -56,7 +59,7 @@ try {
     # Sync only under the lock: another session's running game uses the published copy.
     & (Join-Path $PSScriptRoot 'sync-to-steam.ps1')
     $profileRoot = New-TestProfile -Profile $Profile -ModList $ModList -ExcludeMods $ExcludeMods -LoadPosition $LoadPosition `
-        -Language $Language -ScreenWidth $ScreenWidth -ScreenHeight $ScreenHeight
+        -Language $Language -ScreenWidth $ScreenWidth -ScreenHeight $ScreenHeight -UIScale $UIScale -DisableTinyText:$DisableTinyText
     if ($PrepareOnly) {
         Write-Host "Prepared profile: $profileRoot"
         $result = 0
