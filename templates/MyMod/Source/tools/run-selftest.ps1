@@ -23,7 +23,7 @@ param(
     [switch]$ContinueOnFail,
     # Full profile: packageIds to drop as well (compatibility bisection).
     [string[]]$ExcludeMods = @(),
-    # Full profile: copy the mod list from this ModsConfig.xml (a path, or a file name in <dev root>\ModLists).
+    # Full profile: copy the mod list from this ModsConfig.xml (a path, or a file name in <dev root>\_shared\ModLists).
     [string]$ModList = '',
     [ValidateSet('First', 'Middle', 'Last')]
     [string]$LoadPosition = 'Last',
